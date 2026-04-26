@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>UNO</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">UNO</div>
+    <div class="status" id="status">じゅんびちゅう…</div>
+    <button id="newGameBtn" class="btn">あたらしいゲーム</button>
+  </header>
+
+  <main class="board">
+    <section class="cpu-area">
+      <div class="player-label">CPU<span id="cpuCount" class="count">0</span></div>
+      <div id="cpuHand" class="hand cpu-hand"></div>
+    </section>
+
+    <section class="middle">
+      <div class="deck-area">
+        <button id="deckBtn" class="deck" aria-label="やまふだからひく">
+          <span class="deck-label">やま</span>
+        </button>
+        <div class="discard-area">
+          <div id="discardPile" class="discard"></div>
+          <div id="dirArrow" class="dir-arrow">▶</div>
+        </div>
+      </div>
+      <div class="turn-indicator" id="turnIndicator">あなたのばん</div>
+    </section>
+
+    <section class="player-area">
+      <div class="player-label">あなた<span id="playerCount" class="count">0</span></div>
+      <div id="playerHand" class="hand player-hand"></div>
+      <div class="actions">
+        <button id="unoBtn" class="btn uno-btn">UNO!</button>
+        <button id="passBtn" class="btn" hidden>パス</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Color picker for Wild cards -->
+  <div id="colorPicker" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-title">いろをえらんでね</div>
+      <div class="color-choices">
+        <button class="color-choice" data-color="red" style="background:var(--red)">あか</button>
+        <button class="color-choice" data-color="yellow" style="background:var(--yellow)">きいろ</button>
+        <button class="color-choice" data-color="green" style="background:var(--green)">みどり</button>
+        <button class="color-choice" data-color="blue" style="background:var(--blue)">あお</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game over -->
+  <div id="resultModal" class="modal hidden">
+    <div class="modal-card">
+      <div id="resultTitle" class="modal-title">けっか</div>
+      <div id="resultText" class="result-text"></div>
+      <button id="playAgainBtn" class="btn primary">もういちど</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="game.js"></script>
+  <script src="ai.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>
