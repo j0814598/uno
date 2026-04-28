@@ -2,6 +2,9 @@
 
 let state = null;
 let numPlayers = 2;
+// When the human draws from the deck and the drawn card is playable,
+// hold the turn so they can choose to play it or pass — same as the CPU.
+let pendingDrawIdx = null;
 
 const els = {
   cpuArea: document.getElementById("cpuArea"),
@@ -245,15 +248,24 @@ function render() {
   const myTurn = isHumanTurn();
   me.hand.forEach((card, i) => {
     const el = cardEl(card);
-    let playable = myTurn && UNO.canPlay(card, top, state.currentColor);
-    if (playable && card.kind === "wild" && card.value === "wild4" &&
-        !UNO.canPlayWild4(me.hand, state.currentColor)) {
-      playable = false;
+    let playable;
+    if (pendingDrawIdx !== null) {
+      // After drawing, only the drawn card may be played (official rule).
+      playable = (i === pendingDrawIdx);
+    } else {
+      playable = myTurn && UNO.canPlay(card, top, state.currentColor);
+      if (playable && card.kind === "wild" && card.value === "wild4" &&
+          !UNO.canPlayWild4(me.hand, state.currentColor)) {
+        playable = false;
+      }
     }
     el.classList.add(playable ? "playable" : "unplayable");
     el.addEventListener("click", () => onPlayerCardClick(i));
     els.playerHand.appendChild(el);
   });
+
+  // Pass button is only meaningful while waiting for the drawn-card decision.
+  els.passBtn.hidden = pendingDrawIdx === null;
   els.playerCount.textContent = me.hand.length;
 
   // Discard
@@ -288,6 +300,10 @@ function render() {
 
 function onPlayerCardClick(i) {
   if (!isHumanTurn()) return;
+  if (pendingDrawIdx !== null && i !== pendingDrawIdx) {
+    toast("ひいたカードだけ だせるよ");
+    return;
+  }
   const me = state.players[0];
   const card = me.hand[i];
   const top = state.discard[state.discard.length - 1];
@@ -320,6 +336,7 @@ async function doPlay(i, color) {
   }
   const result = UNO.playCard(state, 0, i, color);
   if (!result.ok) { toast(result.reason); render(); return; }
+  pendingDrawIdx = null;
   log(`あなた: ${describeCard(card)}${color ? ` → ${COLOR_LABEL[color]}` : ""}`);
   flashDiscard();
   if (color) showColorBubble(0, color);
@@ -350,10 +367,34 @@ function askColor(cb) {
 
 async function onDeckClick() {
   if (!isHumanTurn()) return;
+  if (pendingDrawIdx !== null) return;
   await animateDrawTo(0, TIMING.playerDraw);
   const r = UNO.drawForTurn(state, 0);
   if (!r.ok) { toast(r.reason); return; }
   log(`あなた: 1まいひいた`);
+
+  const me = state.players[0];
+  const drawnIdx = me.hand.length - 1;
+  const drawn = me.hand[drawnIdx];
+  const top = state.discard[state.discard.length - 1];
+  const canPlayDrawn = UNO.canPlay(drawn, top, state.currentColor) &&
+      !(drawn.kind === "wild" && drawn.value === "wild4" && !UNO.canPlayWild4(me.hand, state.currentColor));
+
+  if (canPlayDrawn) {
+    pendingDrawIdx = drawnIdx;
+    toast("ひいたカードを だす？ ださない？");
+    render();
+    return;
+  }
+
+  state.turnIdx = UNO.peekNext(state);
+  render();
+  scheduleNextTurn();
+}
+
+function onPassClick() {
+  if (!isHumanTurn() || pendingDrawIdx === null) return;
+  pendingDrawIdx = null;
   state.turnIdx = UNO.peekNext(state);
   render();
   scheduleNextTurn();
@@ -500,6 +541,7 @@ function showResult() {
 function startNewGame(n) {
   if (n) numPlayers = n;
   state = UNO.newGame(numPlayers);
+  pendingDrawIdx = null;
   els.resultModal.classList.add("hidden");
 
   if (state.awaitingColor && state.firstWildChooser === 0) {
@@ -524,6 +566,7 @@ function showCountSelector() {
 
 // Wire up
 els.deckBtn.addEventListener("click", onDeckClick);
+els.passBtn.addEventListener("click", onPassClick);
 els.newGameBtn.addEventListener("click", showCountSelector);
 els.playAgainBtn.addEventListener("click", showCountSelector);
 els.unoBtn.addEventListener("click", () => {
