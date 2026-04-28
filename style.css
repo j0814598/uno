@@ -59,6 +59,17 @@ html, body {
   font-size: 18px;
   letter-spacing: 1px;
 }
+.uno-btn.ready {
+  animation: uno-pulse 0.7s ease-in-out infinite alternate;
+}
+.uno-btn.called {
+  background: #888;
+  color: #eee;
+}
+@keyframes uno-pulse {
+  from { transform: scale(1);    box-shadow: 0 3px 0 rgba(0,0,0,0.25); }
+  to   { transform: scale(1.08); box-shadow: 0 5px 0 rgba(0,0,0,0.25), 0 0 14px rgba(255,200,200,0.7); }
+}
 
 .board {
   display: grid;
@@ -182,15 +193,30 @@ html, body {
   background: rgba(255,255,255,0.08);
   border: 2px dashed rgba(255,255,255,0.3);
 }
-.dir-arrow {
-  position: absolute;
-  top: -22px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 22px;
-  color: #fff;
+.discard.pop { animation: discard-pop 0.32s ease-out; }
+@keyframes discard-pop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.14); }
+  100% { transform: scale(1); }
 }
-.dir-arrow.reverse { transform: translateX(-50%) scaleX(-1); }
+
+.dir-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.4);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 15px;
+}
+.dir-icon {
+  display: inline-block;
+  font-size: 22px;
+  line-height: 1;
+  transition: transform 0.35s ease;
+}
+.dir-icon.reverse { transform: scaleX(-1); }
 
 .turn-indicator {
   font-size: 18px;
@@ -269,6 +295,54 @@ html, body {
 .cpu-hand .card:first-child { margin-left: 0; }
 .cpu-hand .card .num, .cpu-hand .card .symbol { display: none; }
 .cpu-hand .card.back::after { font-size: 14px; letter-spacing: 1px; }
+
+/* Color choice bubble (shown when a wild is played) */
+.color-bubble {
+  position: fixed;
+  z-index: 45;
+  padding: 10px 18px;
+  border-radius: 16px;
+  font-weight: 900;
+  font-size: 22px;
+  color: #fff;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.4);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.45);
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, 6px) scale(0.7);
+  transition: transform 0.2s cubic-bezier(0.2, 1.5, 0.4, 1), opacity 0.2s ease-out;
+}
+.color-bubble.show {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+.color-bubble[data-color="red"]    { background: var(--red);    --c: var(--red); }
+.color-bubble[data-color="yellow"] { background: var(--yellow); --c: var(--yellow); color: #1a1a1a; text-shadow: none; }
+.color-bubble[data-color="green"]  { background: var(--green);  --c: var(--green); }
+.color-bubble[data-color="blue"]   { background: var(--blue);   --c: var(--blue); }
+.color-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  margin-left: -8px;
+  width: 0; height: 0;
+  border: 8px solid transparent;
+}
+.color-bubble.tail-bottom::after { bottom: -14px; border-top-color: var(--c); }
+.color-bubble.tail-top::after    { top: -14px;    border-bottom-color: var(--c); }
+
+/* Ghost card used for fly animations */
+.card.ghost {
+  position: fixed;
+  pointer-events: none;
+  z-index: 40;
+  margin: 0;
+  transform-origin: top left;
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.25, 0.7, 0.3, 1);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.45);
+}
 
 /* Modal */
 .modal {

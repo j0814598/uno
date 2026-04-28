@@ -164,8 +164,10 @@ function playCard(state, idx, cardIdx, chosenColor) {
   }
 
   if (hand.length === 1) {
-    player.unoCalled = false;
-    state.awaitingUnoCall = !player.isCpu;
+    // Preserve a pre-call made while the player still had 2 cards.
+    if (!player.unoCalled) {
+      state.awaitingUnoCall = !player.isCpu;
+    }
   }
 
   if (hand.length === 0) {
@@ -206,7 +208,9 @@ function drawForTurn(state, idx) {
 
 function callUno(state, idx) {
   const p = state.players[idx];
-  if (p.hand.length === 1) {
+  // Allow pre-calling at 2 cards (about to play down to 1) to avoid the
+  // race where the next player acts before you can press the button.
+  if (p.hand.length === 1 || p.hand.length === 2) {
     p.unoCalled = true;
     if (!p.isCpu) state.awaitingUnoCall = false;
     return true;

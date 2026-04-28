@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>UNO</title>
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <header class="topbar">
@@ -23,8 +23,11 @@
         </button>
         <div class="discard-area">
           <div id="discardPile" class="discard"></div>
-          <div id="dirArrow" class="dir-arrow">▶</div>
         </div>
+      </div>
+      <div class="dir-indicator">
+        <span class="dir-icon" id="dirArrow">▶</span>
+        <span class="dir-label" id="dirLabel">じゅんまわり</span>
       </div>
       <div class="turn-indicator" id="turnIndicator">あなたのばん</div>
     </section>
@@ -76,8 +79,8 @@
   <!-- Toast -->
   <div id="toast" class="toast hidden"></div>
 
-  <script src="game.js?v=2"></script>
-  <script src="ai.js?v=2"></script>
-  <script src="ui.js?v=2"></script>
+  <script src="game.js?v=5"></script>
+  <script src="ai.js?v=5"></script>
+  <script src="ui.js?v=5"></script>
 </body>
 </html>
