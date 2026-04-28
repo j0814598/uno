@@ -68,11 +68,42 @@ html, body {
   gap: 4px;
 }
 
-.cpu-area, .player-area {
+.player-area {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
+}
+
+.cpu-area {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 4px;
+}
+.cpu-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 14px;
+  transition: background 0.15s ease;
+}
+.cpu-slot.active {
+  background: rgba(245, 197, 24, 0.18);
+  box-shadow: 0 0 0 2px var(--yellow);
+}
+.cpu-slot.active .player-label {
+  background: var(--yellow);
+  color: #1a1a1a;
+}
+.cpu-slot.active .count {
+  background: #1a1a1a;
+  color: #fff;
 }
 
 .player-label {
@@ -226,8 +257,18 @@ html, body {
   transform: rotate(-15deg);
 }
 
-.cpu-hand .card { width: 56px; height: 82px; }
+.cpu-hand {
+  min-height: 70px;
+  padding-left: 22px;
+}
+.cpu-hand .card {
+  width: 44px;
+  height: 64px;
+  margin-left: -22px;
+}
+.cpu-hand .card:first-child { margin-left: 0; }
 .cpu-hand .card .num, .cpu-hand .card .symbol { display: none; }
+.cpu-hand .card.back::after { font-size: 14px; letter-spacing: 1px; }
 
 /* Modal */
 .modal {
@@ -267,6 +308,13 @@ html, body {
 .color-choice[data-color="yellow"] { color: #1a1a1a; text-shadow: none; }
 .result-text { font-size: 20px; margin-bottom: 16px; }
 
+.count-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.count-choice { font-size: 17px; padding: 14px 12px; }
+
 /* Toast */
 .toast {
   position: fixed;
@@ -295,5 +343,7 @@ html, body {
   :root { --card-w: 64px; --card-h: 94px; }
   .card .num { font-size: 28px; }
   .card .symbol { font-size: 22px; }
-  .cpu-hand .card { width: 40px; height: 60px; }
+  .cpu-area { gap: 8px; }
+  .cpu-hand { padding-left: 18px; }
+  .cpu-hand .card { width: 32px; height: 48px; margin-left: -18px; }
 }

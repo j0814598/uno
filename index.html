@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>UNO</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
   <header class="topbar">
@@ -14,10 +14,7 @@
   </header>
 
   <main class="board">
-    <section class="cpu-area">
-      <div class="player-label">CPU<span id="cpuCount" class="count">0</span></div>
-      <div id="cpuHand" class="hand cpu-hand"></div>
-    </section>
+    <div id="cpuArea" class="cpu-area"></div>
 
     <section class="middle">
       <div class="deck-area">
@@ -64,11 +61,23 @@
     </div>
   </div>
 
+  <!-- Player count selector -->
+  <div id="countSelector" class="modal">
+    <div class="modal-card">
+      <div class="modal-title">あそぶ人数をえらんでね</div>
+      <div class="count-choices">
+        <button class="btn primary count-choice" data-count="2">2人 (あなた + CPU)</button>
+        <button class="btn primary count-choice" data-count="3">3人 (あなた + CPU 2)</button>
+        <button class="btn primary count-choice" data-count="4">4人 (あなた + CPU 3)</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast" class="toast hidden"></div>
 
-  <script src="game.js"></script>
-  <script src="ai.js"></script>
-  <script src="ui.js"></script>
+  <script src="game.js?v=2"></script>
+  <script src="ai.js?v=2"></script>
+  <script src="ui.js?v=2"></script>
 </body>
 </html>

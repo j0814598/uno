@@ -1,10 +1,10 @@
 // UI layer — renders state and handles input.
 
 let state = null;
+let numPlayers = 2;
 
 const els = {
-  cpuHand: document.getElementById("cpuHand"),
-  cpuCount: document.getElementById("cpuCount"),
+  cpuArea: document.getElementById("cpuArea"),
   playerHand: document.getElementById("playerHand"),
   playerCount: document.getElementById("playerCount"),
   discard: document.getElementById("discardPile"),
@@ -21,6 +21,7 @@ const els = {
   resultTitle: document.getElementById("resultTitle"),
   playAgainBtn: document.getElementById("playAgainBtn"),
   toast: document.getElementById("toast"),
+  countSelector: document.getElementById("countSelector"),
 };
 
 const SYMBOL = {
@@ -77,35 +78,54 @@ function addCorners(el, txt) {
   el.appendChild(br);
 }
 
-function render() {
-  // CPU hand (face-down)
-  els.cpuHand.innerHTML = "";
-  state.hands.cpu.forEach(() => {
-    els.cpuHand.appendChild(cardEl({}, { back: true }));
-  });
-  els.cpuCount.textContent = state.hands.cpu.length;
+function isHumanTurn() {
+  return !!state && !state.over && state.turnIdx === 0;
+}
 
-  // Player hand
+function render() {
+  if (!state) return;
+
+  // CPU areas
+  els.cpuArea.innerHTML = "";
+  state.players.forEach((p, idx) => {
+    if (!p.isCpu) return;
+    const slot = document.createElement("section");
+    slot.className = "cpu-slot";
+    if (state.turnIdx === idx && !state.over) slot.classList.add("active");
+
+    const label = document.createElement("div");
+    label.className = "player-label";
+    label.innerHTML = `${p.name}<span class="count">${p.hand.length}</span>`;
+    slot.appendChild(label);
+
+    const hand = document.createElement("div");
+    hand.className = "hand cpu-hand";
+    p.hand.forEach(() => hand.appendChild(cardEl({}, { back: true })));
+    slot.appendChild(hand);
+    els.cpuArea.appendChild(slot);
+  });
+
+  // Player hand (always index 0)
+  const me = state.players[0];
   els.playerHand.innerHTML = "";
   const top = state.discard[state.discard.length - 1];
-  const isPlayerTurn = state.turn === "player" && !state.over;
-  state.hands.player.forEach((card, i) => {
+  const myTurn = isHumanTurn();
+  me.hand.forEach((card, i) => {
     const el = cardEl(card);
-    let playable = isPlayerTurn && UNO.canPlay(card, top, state.currentColor);
+    let playable = myTurn && UNO.canPlay(card, top, state.currentColor);
     if (playable && card.kind === "wild" && card.value === "wild4" &&
-        !UNO.canPlayWild4(state.hands.player, state.currentColor)) {
+        !UNO.canPlayWild4(me.hand, state.currentColor)) {
       playable = false;
     }
     el.classList.add(playable ? "playable" : "unplayable");
     el.addEventListener("click", () => onPlayerCardClick(i));
     els.playerHand.appendChild(el);
   });
-  els.playerCount.textContent = state.hands.player.length;
+  els.playerCount.textContent = me.hand.length;
 
   // Discard
   els.discard.innerHTML = "";
   els.discard.appendChild(cardEl(top));
-  // recolor wilds via outer ring class
   els.discard.classList.remove("color-red", "color-yellow", "color-green", "color-blue");
   if (state.currentColor) els.discard.classList.add("color-" + state.currentColor);
 
@@ -113,28 +133,29 @@ function render() {
   els.dirArrow.classList.toggle("reverse", state.direction === -1);
 
   // turn
-  els.turnIndicator.classList.toggle("your-turn", isPlayerTurn);
+  const cur = state.players[state.turnIdx];
+  els.turnIndicator.classList.toggle("your-turn", myTurn);
   els.turnIndicator.textContent = state.over
     ? "おわり"
-    : isPlayerTurn ? "あなたのばん" : "CPUのばん";
+    : myTurn ? "あなたのばん" : `${cur.name}のばん`;
 
   // status — show last log line
   els.status.textContent = state.log[state.log.length - 1] || "";
 
   // UNO button visible only when player has 2 cards (about to play to 1) or just played to 1
-  const playerCards = state.hands.player.length;
-  els.unoBtn.hidden = !(isPlayerTurn && playerCards <= 2);
+  els.unoBtn.hidden = !(myTurn && me.hand.length <= 2);
 }
 
 function onPlayerCardClick(i) {
-  if (state.turn !== "player" || state.over) return;
-  const card = state.hands.player[i];
+  if (!isHumanTurn()) return;
+  const me = state.players[0];
+  const card = me.hand[i];
   const top = state.discard[state.discard.length - 1];
   if (!UNO.canPlay(card, top, state.currentColor)) {
     toast("そのカードはだせないよ");
     return;
   }
-  if (card.kind === "wild" && card.value === "wild4" && !UNO.canPlayWild4(state.hands.player, state.currentColor)) {
+  if (card.kind === "wild" && card.value === "wild4" && !UNO.canPlayWild4(me.hand, state.currentColor)) {
     toast("+4は おなじいろがないときだけ");
     return;
   }
@@ -146,106 +167,117 @@ function onPlayerCardClick(i) {
 }
 
 function doPlay(i, color) {
-  const card = state.hands.player[i];
-  const willHaveOne = state.hands.player.length === 2;
-  const result = UNO.playCard(state, "player", i, color);
+  const me = state.players[0];
+  const card = me.hand[i];
+  const result = UNO.playCard(state, 0, i, color);
   if (!result.ok) { toast(result.reason); return; }
   log(`あなた: ${describeCard(card)}${color ? ` → ${COLOR_LABEL[color]}` : ""}`);
-  if (willHaveOne && !state.unoCalled.player) {
-    // Give a small grace window before CPU acts; if not called, CPU triggers penalty.
-  }
   render();
   if (state.over) { showResult(); return; }
-  if (state.turn === "cpu") setTimeout(cpuTurn, 700);
+  scheduleNextTurn();
+}
+
+function scheduleNextTurn() {
+  if (!state || state.over) return;
+  const cur = state.players[state.turnIdx];
+  if (cur.isCpu) setTimeout(() => cpuTurn(state.turnIdx), 700);
 }
 
 function askColor(cb) {
   els.colorPicker.classList.remove("hidden");
-  const handlers = {};
   els.colorPicker.querySelectorAll(".color-choice").forEach(b => {
-    handlers[b.dataset.color] = () => {
+    const fresh = b.cloneNode(true);
+    b.replaceWith(fresh);
+  });
+  els.colorPicker.querySelectorAll(".color-choice").forEach(b => {
+    b.addEventListener("click", () => {
       els.colorPicker.classList.add("hidden");
-      els.colorPicker.querySelectorAll(".color-choice").forEach(bb => bb.replaceWith(bb.cloneNode(true)));
       cb(b.dataset.color);
-    };
-    b.addEventListener("click", handlers[b.dataset.color], { once: true });
+    }, { once: true });
   });
 }
 
 function onDeckClick() {
-  if (state.turn !== "player" || state.over) return;
-  const r = UNO.drawForTurn(state, "player");
+  if (!isHumanTurn()) return;
+  const r = UNO.drawForTurn(state, 0);
   if (!r.ok) { toast(r.reason); return; }
   log(`あなた: 1まいひいた`);
-  // If drawn card is playable, allow optional play; for simplicity (kid-friendly),
-  // we auto-pass to CPU. Player can play next turn.
-  // (Keeping it simple matches common house behavior; will revisit if needed.)
-  // Move turn to CPU.
-  state.turn = "cpu";
+  // Pass the turn to the next player (kid-friendly: no auto-play of drawn card).
+  state.turnIdx = UNO.peekNext(state);
   render();
-  setTimeout(cpuTurn, 700);
+  scheduleNextTurn();
 }
 
-function cpuTurn() {
-  if (state.over || state.turn !== "cpu") return;
+function cpuTurn(idx) {
+  if (!state || state.over || state.turnIdx !== idx) return;
+  const cpu = state.players[idx];
 
-  // Penalty: if player ended last turn at 1 card without calling UNO.
-  if (state.awaitingUnoCall && state.hands.player.length === 1 && !state.unoCalled.player) {
-    UNO.checkUnoPenalty(state, "player");
-    toast("UNOをいわなかった！ ペナルティで2まい");
+  // Penalty: human ended at 1 card without calling UNO.
+  if (state.awaitingUnoCall) {
+    const me = state.players[0];
+    if (me.hand.length === 1 && !me.unoCalled) {
+      UNO.checkUnoPenalty(state, 0);
+      toast("UNOをいわなかった！ ペナルティで2まい");
+    }
     state.awaitingUnoCall = false;
     render();
   }
 
-  const move = AI.chooseCpuMove(state);
+  const move = AI.chooseCpuMove(state, idx);
   if (move.type === "draw") {
-    const r = UNO.drawForTurn(state, "cpu");
+    const r = UNO.drawForTurn(state, idx);
     if (!r.ok) {
-      log("CPU: ひけない");
-      state.turn = "player";
+      log(`${cpu.name}: ひけない`);
+      state.turnIdx = UNO.peekNext(state, idx);
       render();
+      scheduleNextTurn();
       return;
     }
-    log("CPU: 1まいひいた");
-    // Try to play the drawn card if legal.
+    log(`${cpu.name}: 1まいひいた`);
     const top = state.discard[state.discard.length - 1];
-    const newIdx = state.hands.cpu.length - 1;
-    const drawn = state.hands.cpu[newIdx];
+    const newIdx = cpu.hand.length - 1;
+    const drawn = cpu.hand[newIdx];
     if (UNO.canPlay(drawn, top, state.currentColor) &&
-        !(drawn.kind === "wild" && drawn.value === "wild4" && !UNO.canPlayWild4(state.hands.cpu, state.currentColor))) {
-      const chosen = drawn.kind === "wild" ? bestColorFor("cpu") : null;
-      const willHaveOne = state.hands.cpu.length === 1;
-      UNO.playCard(state, "cpu", newIdx, chosen);
-      if (willHaveOne) UNO.callUno(state, "cpu"); // CPU always calls UNO
-      log(`CPU: ${describeCard(drawn)}${chosen ? ` → ${COLOR_LABEL[chosen]}` : ""}`);
+        !(drawn.kind === "wild" && drawn.value === "wild4" && !UNO.canPlayWild4(cpu.hand, state.currentColor))) {
+      const chosen = drawn.kind === "wild" ? bestColorFor(idx) : null;
+      const willHaveOne = cpu.hand.length === 2;
+      UNO.playCard(state, idx, newIdx, chosen);
+      if (willHaveOne) { UNO.callUno(state, idx); toast(`${cpu.name}: UNO!`); }
+      log(`${cpu.name}: ${describeCard(drawn)}${chosen ? ` → ${COLOR_LABEL[chosen]}` : ""}`);
       render();
       if (state.over) return showResult();
-      if (state.turn === "cpu") return setTimeout(cpuTurn, 700);
+      scheduleNextTurn();
       return;
     }
-    state.turn = "player";
+    state.turnIdx = UNO.peekNext(state, idx);
     render();
+    scheduleNextTurn();
     return;
   }
 
   // Play a card
-  const card = state.hands.cpu[move.idx];
-  const willHaveOne = state.hands.cpu.length === 2; // about to drop to 1
-  const r = UNO.playCard(state, "cpu", move.idx, move.chosenColor);
-  if (!r.ok) { state.turn = "player"; render(); return; }
-  if (willHaveOne) {
-    UNO.callUno(state, "cpu");
-    toast("CPU: UNO!");
+  const card = cpu.hand[move.idx];
+  const willHaveOne = cpu.hand.length === 2;
+  const r = UNO.playCard(state, idx, move.idx, move.chosenColor);
+  if (!r.ok) {
+    state.turnIdx = UNO.peekNext(state, idx);
+    render();
+    scheduleNextTurn();
+    return;
   }
-  log(`CPU: ${describeCard(card)}${move.chosenColor ? ` → ${COLOR_LABEL[move.chosenColor]}` : ""}`);
+  if (willHaveOne) {
+    UNO.callUno(state, idx);
+    toast(`${cpu.name}: UNO!`);
+  }
+  log(`${cpu.name}: ${describeCard(card)}${move.chosenColor ? ` → ${COLOR_LABEL[move.chosenColor]}` : ""}`);
   render();
   if (state.over) return showResult();
-  if (state.turn === "cpu") setTimeout(cpuTurn, 700);
+  scheduleNextTurn();
 }
 
-function bestColorFor(who) {
+function bestColorFor(idx) {
   const counts = { red: 0, yellow: 0, green: 0, blue: 0 };
-  for (const c of state.hands[who]) if (c.color in counts) counts[c.color]++;
+  for (const c of state.players[idx].hand) if (c.color in counts) counts[c.color]++;
   let best = "red", bn = -1;
   for (const k of Object.keys(counts)) if (counts[k] > bn) { bn = counts[k]; best = k; }
   return best;
@@ -275,36 +307,61 @@ function toast(msg) {
 }
 
 function showResult() {
-  els.resultTitle.textContent = state.winner === "player" ? "かち！🎉" : "まけ…";
-  els.resultText.textContent = state.winner === "player" ? "やったね！" : "つぎはがんばろう！";
+  const winner = state.players[state.winner];
+  const youWin = !winner.isCpu;
+  els.resultTitle.textContent = youWin ? "かち！🎉" : "まけ…";
+  els.resultText.textContent = youWin
+    ? "やったね！"
+    : `${winner.name}のかち！ つぎはがんばろう！`;
   els.resultModal.classList.remove("hidden");
 }
 
-function startNewGame() {
-  state = UNO.newGame();
+function startNewGame(n) {
+  if (n) numPlayers = n;
+  state = UNO.newGame(numPlayers);
   els.resultModal.classList.add("hidden");
-  // Handle first-card wild requiring color choice
-  if (state.awaitingColor && state.firstWildChooser === "player") {
+
+  if (state.awaitingColor && state.firstWildChooser === 0) {
     askColor(color => {
       state.currentColor = color;
       state.awaitingColor = false;
       render();
+      scheduleNextTurn();
     });
+  } else if (state.awaitingColor) {
+    // CPU starts on a wild — let them pick best color silently.
+    state.currentColor = bestColorFor(state.firstWildChooser);
+    state.awaitingColor = false;
   }
   render();
-  if (state.turn === "cpu") setTimeout(cpuTurn, 800);
+  scheduleNextTurn();
+}
+
+function showCountSelector() {
+  els.resultModal.classList.add("hidden");
+  els.countSelector.classList.remove("hidden");
 }
 
 // Wire up
 els.deckBtn.addEventListener("click", onDeckClick);
-els.newGameBtn.addEventListener("click", startNewGame);
-els.playAgainBtn.addEventListener("click", startNewGame);
+els.newGameBtn.addEventListener("click", showCountSelector);
+els.playAgainBtn.addEventListener("click", showCountSelector);
 els.unoBtn.addEventListener("click", () => {
-  if (state.hands.player.length === 1 || state.hands.player.length === 2) {
-    UNO.callUno(state, "player");
+  if (!state) return;
+  const me = state.players[0];
+  if (me.hand.length === 1 || me.hand.length === 2) {
+    UNO.callUno(state, 0);
     toast("UNO!");
     render();
   }
 });
+els.countSelector.querySelectorAll(".count-choice").forEach(b => {
+  b.addEventListener("click", () => {
+    const n = parseInt(b.dataset.count, 10);
+    els.countSelector.classList.add("hidden");
+    startNewGame(n);
+  });
+});
 
-startNewGame();
+// Initial: show selector before starting.
+showCountSelector();

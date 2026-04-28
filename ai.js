@@ -1,10 +1,11 @@
 // CPU AI — simple but reasonable strategy:
 // 1. Prefer playing action/wild cards strategically.
-// 2. Save Wild +4 unless it's the only legal play or opponent is close to winning.
-// 3. Pick the color it has the most of when playing a wild.
+// 2. Save Wild +4 unless next player is close to winning or it's the only legal play.
+// 3. Pick the color the CPU has the most of when playing a wild.
 
-function chooseCpuMove(state) {
-  const hand = state.hands.cpu;
+function chooseCpuMove(state, cpuIdx) {
+  const idx = cpuIdx ?? state.turnIdx;
+  const hand = state.players[idx].hand;
   const top = state.discard[state.discard.length - 1];
   const color = state.currentColor;
 
@@ -17,21 +18,19 @@ function chooseCpuMove(state) {
 
   if (playable.length === 0) return { type: "draw" };
 
-  const playerHandSize = state.hands.player.length;
+  const nextIdx = UNO.peekNext(state, idx);
+  const nextHandSize = state.players[nextIdx].hand.length;
 
-  // Score each option (lower = play first / better).
   function score({ card }) {
     if (card.kind === "wild" && card.value === "wild4") {
-      // Save unless player is close to winning or it's our only option.
-      return playerHandSize <= 2 ? 1 : 100;
+      return nextHandSize <= 2 ? 1 : 100;
     }
     if (card.kind === "wild") return 90;
     if (card.kind === "action") {
-      // Aggressive when player is low on cards.
-      if (playerHandSize <= 3) return 10;
+      if (nextHandSize <= 3) return 10;
       return 30;
     }
-    return 50; // numbers
+    return 50;
   }
 
   playable.sort((a, b) => score(a) - score(b));
